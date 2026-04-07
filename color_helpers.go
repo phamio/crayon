@@ -113,6 +113,9 @@ func parseRGBToAnsiCode(rgbCode string) string {
 		return parseAnsi(rgbCode, fmt.Sprintf("2;%d;%d;%d", RGB[0], RGB[1], RGB[2]))
 	}
 	//Use 256 color palette fallback
+	//its obvious the fallback is broken, if given rgb is not in
+	//delta match, it won't catch.
+	//im just trying to learn and understand more aboyt terminal colouring.
 	fallBackCode := hexTo256Fallback(rgbToHex(int64(RGB[0]), int64(RGB[1]), int64(RGB[2])))
 	return parseAnsi(rgbCode, fmt.Sprintf("5;%s", fallBackCode))
 }
