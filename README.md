@@ -18,7 +18,7 @@ go get github.com/phamio/crayon
 - Simple API: Easy-to-use functions for text styling and coloring.
 - Comprehensive Styles: Bold, italic, underline, blink, reverse, hidden, strike-through.
 - Granular Resets: Individual and full reset codes for precise control.
-- No Escape: Texts in [] that aren't colors/styles are left as it is.
+- Escape aren't needed: Texts in [] that aren't colors/styles are left as it is.
 - Inline Padding: Left and right alignment, declared directly on placeholders.
 - Cross-Platform: Full color support on Windows (Windows Terminal, cmd), Linux and macOS.
 
@@ -663,16 +663,6 @@ func main() {
         crayon.Parse(fmt.Sprintf("[bold fg=red]Item%d[reset] [fg=green]Value%d[reset]", i, i)).Sprint()
     }
     fmt.Printf("Parse every time: %v\n", time.Since(start))
-    
-    // Method 3: Manual concatenation
-    start = time.Now()
-    for i := 0; i < iterations; i++ {
-        _ = crayon.ParseColor("fg=red bold") + fmt.Sprintf("Item%d", i) + 
-            crayon.ParseColor("reset") + " " + 
-            crayon.ParseColor("fg=green") + fmt.Sprintf("Value%d", i) + 
-            crayon.ParseColor("reset")
-    }
-    fmt.Printf("Manual concatenation: %v\n", time.Since(start))
 }
 ```
 
@@ -681,7 +671,6 @@ func main() {
 ```bash
 Template reuse: 1.75269893s
 Parse every time: 20.433925041s
-Manual concatenation: 2.6698368s
 ```
 
 

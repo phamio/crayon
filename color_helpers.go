@@ -5,8 +5,54 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"github.com/jwalton/gchalk/pkg/ansistyles" //for true color fallback
 )
+
+//===== FIXES BEFORE v1.0.0 ========
+// Cross platform support [DONE]
+// RGB-TO-256 fallback [DONE]
+// Dumb terminals [YET TO KNOW ITS WORKINGS]
+// Escape system [NOT YET]
+// Fast Parsing [IN PROGRESS]
+// 256 to ansi colors for terminals that dont support 256 [IN PROGRESS]
+// ========== END =============
+
+
+//===========================================
+//  RGB TO 256 PALETTE FALLBACk
+//===========================================
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
+func rgbTo256Index(r, g, b int) int {
+    r6 := (r * 5 + 127) / 255
+	g6 := (g * 5 + 127) / 255
+	b6 := (b * 5 + 127)/ 255
+	//cubeIndex := 16 + 36*r6 + 6*g6 +b6
+
+
+  //check if it's close enough to gray
+  if abs(r-g) < 10 && abs(g-b) < 10 {
+  	avg := (r + g + b) / 3
+  	if avg < 8 {
+  		//return 16 //closest is black in the color cube
+  		avg = 8
+  	}
+  	if avg > 238 {
+  		//return 231 //closest is white in the color cube
+  		avg = 238
+  	}
+  	return  232 + (avg-8)/10
+  }
+	
+	return 16 + 36*r6 + 6*g6 +b6
+}
+
+
 
 //===========================================
 //  COLOR VALIDATION
@@ -57,13 +103,14 @@ func isValidRGB(rgbCode string) bool {
 		if boolean {
 			for _, num := range seqNumbers {
 				
-				if num <= 0 || num >= 255 {
+				if num < 0 || num > 255 {
 					return false
 				}
 			}
 		}
+		return true
 	}
-	return true
+	return false
 }
 
 func supportsTrueColor() bool {
@@ -114,33 +161,22 @@ func parseRGBToAnsiCode(rgbCode string) string {
 		return parseAnsi(rgbCode, fmt.Sprintf("2;%d;%d;%d", RGB[0], RGB[1], RGB[2]))
 	}
 	//256 palette fallback
-	if strings.HasPrefix(rgbCode, "fg="){
-	 return ansistyles.Ansi256(ansistyles.RGBToAnsi256(uint8(RGB[0]), uint8(RGB[1]), uint8(RGB[2])))
-	}
-	if strings.HasPrefix(rgbCode, "bg="){
-	 return ansistyles.BgAnsi256(ansistyles.RGBToAnsi256(uint8(RGB[0]), uint8(RGB[1]), uint8(RGB[2])))
-	}
-	return ""
+		return parseAnsi(rgbCode, fmt.Sprintf("5;%d", rgbTo256Index(RGB[0], RGB[1], RGB[2])))
 }
 
 func parseHexToAnsiCode(hexCode string) string {
 	//fg=#RRGGBB
 	if len(hexCode) == 10 {
-		if supportsTrueColor() {
-			R, _ := strconv.ParseInt(hexCode[4:6], 16, 32)
-			G, _ := strconv.ParseInt(hexCode[6:8], 16, 32)
-			B, _ := strconv.ParseInt(hexCode[8:10], 16, 32)
+		R, _ := strconv.ParseInt(hexCode[4:6], 16, 32)
+		G, _ := strconv.ParseInt(hexCode[6:8], 16, 32)
+	    B, _ := strconv.ParseInt(hexCode[8:10], 16, 32)
 
+		if supportsTrueColor() {
 			return parseAnsi(hexCode, fmt.Sprintf("2;%d;%d;%d", R, G, B))
 		}
 		//256 palette fallback
-		if strings.HasPrefix(hexCode, "fg=#"){
-        return ansistyles.Ansi256(ansistyles.HexToAnsi256(hexCode[4:]))
+		return parseAnsi(hexCode, fmt.Sprintf("5;%d", rgbTo256Index(int(R), int(G), int(B))))
 		}
-		if strings.HasPrefix(hexCode, "bg=#"){
-        return ansistyles.BgAnsi256(ansistyles.HexToAnsi256(hexCode[4:]))
-		}
-	}
 	return ""
 }
 
@@ -156,6 +192,8 @@ func parse256ColorCode(colorCode string) string {
 	return parseAnsi(colorCode, fmt.Sprintf("5;%s", colorCode[3:]))
 }
 
+
+// will be made a private function in v0.7.0
 func ParseColor(color string) string {
 	//this function is meant to receive string like "bold" "fg=red" and other colors and
 	//convert them to their ansi codes
@@ -179,8 +217,8 @@ func ParseColor(color string) string {
 		return parseHexToAnsiCode(color)
 	}
 
-	if isValidRGB(color) /*reads and throws it away*/ {
-		//got no way to use values that isValidRGB read because prefix or color is needed too, hence re-reading it again
+	if isValidRGB(color) /*reads and throws values away*/ {
+		//got no way to reuse values that isValidRGB read because prefix or color is needed too, hence re-reading it again
 		return parseRGBToAnsiCode(color)
 	}
 	return ""

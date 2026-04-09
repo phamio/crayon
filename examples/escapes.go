@@ -5,6 +5,6 @@ import(
 )
 
 func main(){
-	esc := crayon.Parse("[fg=red][<<fg=red>>]ERROR[reset]")
+	esc := crayon.Parse("[fg=red][<<fg=red>>][[fg=red]]ERROR[reset]")
 	esc.Println()
 }

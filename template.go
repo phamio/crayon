@@ -38,11 +38,14 @@ func autoDetect() bool {
 	return term.IsTerminal(int(os.Stdout.Fd()))
 }
 
+//[TEMPORARILY]
 //for escapes, it will be [<content>] so that anyone can use eg. [12:30] (time literal) without getting errors.
 //such escape will be used for color and styles too
+
 //Escapes
-// [[content]] //needs lookahead and a whole lot of complexities.
-// \[content\]  //just prefix and suffix look
+// [[content]] //needs lookahead and a whole lot of complexities. the parser was made to fight such escape
+//when it was new and needed no escape system.
+// \[content\]  //just prefix and suffix look but may conflict with already existing golang string adages.
 
 //=============================
 // PARSE - LOOP
@@ -77,17 +80,25 @@ func parseLoop(input string, enableColor bool) ([]TempPart, string) {
 	return parts, currentText
 }
 
+//[[content]] will be the accepted escape, the parser checks if its at least 2 chars "[[", same for
+// at least 2 chars "]]"
 //=============================
 // PARSE - BRACKET HANDLERS
 //=============================
 
 func handleOpenBracket(i int, input string, parts []TempPart, currentText string) ([]TempPart, string, string, bool) {
 	//check if the next value is "["
-	// [[fg=color]] should never be an escape, because first ']' terminates early without lookahead
+	// [[fg=color]] should never be an escape, because first ']' terminates early without lookahead [WILL BE FIXED]
 	//besides escape is just meant to be an opt in
 
 	//consider first '[' as a text, move until, content is found.
 	if i+1 < len(input) && input[i+1] == '[' {
+		//for escapes
+
+
+		fmt.Println("NEXT INPUT: ", string(input[i+2]))
+		fmt.Println("LAST INPUT: ", string(input[len(input)-6:]))
+		fmt.Println("Text: ", currentText)
 		currentText += "["
 		return parts, currentText, "", false
 	}
@@ -178,13 +189,12 @@ func isValidPlaceholder(input string) bool {
 }
 
 func handlePlaceholder(parts []TempPart, contentSequence string) []TempPart {
-	//decided to make it flexible and accept more indices but its still prone to overflow
-	//needs a digit boundary guard
+	//digit boundary guard to prevent overflow
 	index, err := strconv.Atoi(contentSequence)
 	if err == nil && index >= 0 && index <= 999 {
 		return append(parts, TempPart{Text: "", Index: index, FormatStr: ""})
 	}
-	//out of range -treat as literal
+	//out of range - treat as literal
 	return append(parts, TempPart{Text: "[" + contentSequence + "]", Index: -1, FormatStr: ""})
 }
 
@@ -206,6 +216,9 @@ func handlePaddedPlaceholder(parts []TempPart, contentSequence string) []TempPar
 	align, width, err := parseAlignWidth(padStr)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
+		//for the sake of no better escape yet, accept as literal after error propagation
+		//once escape is created, enforce its use by printing error and stopping.
+		//Not everything is meant to be treated as literal, some are meant to be brought to notice.
 		return append(parts, TempPart{Text: "[" + contentSequence + "]", Index: -1, FormatStr: ""})
 	}
 	return append(parts, TempPart{Text: "", Index: index, FormatStr: buildFormatStr(align, width)})
@@ -214,7 +227,8 @@ func handlePaddedPlaceholder(parts []TempPart, contentSequence string) []TempPar
 // =============================
 // PARSE - ESCAPE
 // =============================
-// [<content>] => <content>
+// This is only a temporary escape [<content>] => <content> 
+// This will be the main escape [[content]]
 // strip it of its angle brackets
 func handleEscape(parts []TempPart, contentSequence string) []TempPart {
 	contentSequence = strings.TrimPrefix(contentSequence, "<")
@@ -280,6 +294,7 @@ func allDigits(s string) bool {
 //=============================
 // APPLY
 //=============================
+//what if sum of apply(args) is greater than estimation 
 func (temp CompiledTemplate) apply(args ...any) string {
 	//Calculate estimated size for optimization
 	var totalArgLength int
@@ -296,7 +311,7 @@ func (temp CompiledTemplate) apply(args ...any) string {
 			result.WriteString(part.Text)
 		} else if part.Index < len(args) {
 			value := fmt.Sprint(args[part.Index])
-			if part.FormatStr != "" {
+			if part.FormatStr != "" {				
 				value = fmt.Sprintf(part.FormatStr, value)
 			}
 			result.WriteString(value)
