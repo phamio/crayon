@@ -133,22 +133,6 @@ func TestParse_WithPlaceholders(t *testing.T) {
 	}
 }
 
-func TestParse_WithEscapes(t *testing.T) {
-	template := Parse("[<fg=red>] should be literal")
-	
-	// Should have one part for the escaped content
-	foundEscape := false
-	for _, part := range template.Parts {
-		if part.Text == "[fg=red]" {
-			foundEscape = true
-			break
-		}
-	}
-	
-	if !foundEscape {
-		t.Error("Escaped content '[fg=red]' not found in parts")
-	}
-}
 
 func TestParse_ComplexTemplate(t *testing.T) {
 	template := Parse("[fg=blue bold][0:<20][reset] [fg=green][1][reset]")
@@ -425,12 +409,6 @@ func BenchmarkColorToggle_Parse(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		toggle.Parse(tmpl)
-	}
-}
-
-func BenchmarkParse_WithEscapes(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		Parse("[<fg=red>] should be literal [<12:30>] time")
 	}
 }
 

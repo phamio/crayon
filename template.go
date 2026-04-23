@@ -2,9 +2,7 @@ package crayon
 
 import (
 	"fmt"
-	//"golang.org/x/term"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 	"unicode"
@@ -23,9 +21,6 @@ type CompiledTemplate struct {
 
 
 
-
-//for escapes, it will be [<content>] so that anyone can use eg. [12:30] (time literal) without getting errors.
-//such escape will be used for color and styles too
 
 
 //=============================
@@ -75,10 +70,7 @@ func parseLoop(input string, enableColor bool) ([]TempPart, string) {
 //=============================
 
 func handleOpenBracket(i int, input string, parts []TempPart, currentText string) ([]TempPart, string, string, bool) {
-	//check if the next value is "["
-	// [[fg=color]] should never be an escape, because first ']' terminates early without lookahead
-	//besides escape is just meant to be an opt in
-
+    //Bracket peeling logic - Peel brackets to see if content is a color or not
 	//consider first '[' as a text, move until, content is found.
 	if i+1 < len(input) && input[i+1] == '[' {
 
@@ -92,7 +84,6 @@ func handleOpenBracket(i int, input string, parts []TempPart, currentText string
 
 func handleCloseBracket(contentSequence string, parts []TempPart, enableColor bool) ([]TempPart, bool) {
 	allWords := strings.Fields(contentSequence)
-	//fmt.Println("All wORDS: ", allWords)
 
 	if isColorSequence(allWords) {
 		parts = handleColorSequence(parts, allWords, enableColor)
@@ -121,7 +112,7 @@ func isColorSequence(words []string) bool {
 func handleColorSequence(parts []TempPart, words []string, enableColor bool) []TempPart {
 	if enableColor {
 		for _, w := range words {
-			parts = append(parts, TempPart{Text: ParseColor(w), Index: -1, FormatStr: ""})
+			parts = append(parts, TempPart{Text: parseColor(w), Index: -1, FormatStr: ""})
 		}
 	} else {
 		parts = append(parts, TempPart{Text: "", Index: -1, FormatStr: ""})
@@ -139,10 +130,6 @@ func handleNonColorSequence(parts []TempPart, contentSequence string) []TempPart
 		return handlePaddedPlaceholder(parts, contentSequence)
 	}
 
-	//for escapes
-	if strings.HasPrefix(contentSequence, "<") && strings.HasSuffix(contentSequence, ">") {
-		return handleEscape(parts, contentSequence)
-	}
 	//unrecognized -  pass through as literal
 	return append(parts, TempPart{Text: "[" + contentSequence + "]", Index: -1, FormatStr: ""})
 }
@@ -159,23 +146,19 @@ func handleNonColorSequence(parts []TempPart, contentSequence string) []TempPart
 //using fmt.Printf("%-20s", pad.Sprint("File Not Found"))
 //This left aligns the whole "\033[31mError: File Not Found\033[0m" instead of only "File Not Found"
 
-//Although there's a fix, its verbose and less readable.
+//Although there's a fix, its verbose
 // use pad.Println(fmt.Sprintf("%-20s", "File Not Found"))
 
-//So crayon opted for
+//So crayon opted for {Define once, pad many times}
 // pad := crayon.Parse("[fg=red]Error: [0:<20][reset]")
 //  pad.Println("File Not Found") which correctly left aligns only "File Not Found"
 
 //crayon's padding is nothing special, it just does this
 //padIt := fmt.Sprintf("%-20s", "File Not Found") in the backend
 // pad.Println(padIt)
-//Saving you less typing strokes and effiecient for repeated outputs
+//Saving you less typing strokes and efficient for repeated outputs
 //========= END =========
 
-//Overflow handling will slow down crayon. I'm still on the fence of throwing it away or using it
-//It will slow down crayon because calculation will be moved to apply, thats not the work of apply
-//[0:<20!] = right alignment  with truncation, [0:>20~] = left align with elipsis(...),
-//[0:<20?] = right alignment  with warn to stderr
 
 func isValidPlaceholder(input string) bool {
 	return len(input) > 0 && allDigits(input)
@@ -183,7 +166,6 @@ func isValidPlaceholder(input string) bool {
 
 func handlePlaceholder(parts []TempPart, contentSequence string) []TempPart {
 	//digit boundary guard to prevent overflow
-	//fmt.Println("HANDLING PLACEHOLDERS: ", contentSequence)
 	index, err := strconv.Atoi(contentSequence)
 	if err == nil && index >= 0 && index <= 999 {
 		return append(parts, TempPart{Text: "", Index: index, FormatStr: ""})
@@ -207,52 +189,38 @@ func handlePaddedPlaceholder(parts []TempPart, contentSequence string) []TempPar
 	}
 
 	//parse the padStr
-	align, width, err := parseAlignWidth(padStr)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		//for the sake of no better escape yet, accept as literal after error propagation
-		//once escape is created, enforce its use by printing error and stopping.
-		//Not everything is meant to be treated as literal, some are meant to be brought to notice.
+	align, width, boolean:= parseAlignWidth(padStr)
+	if !boolean {
 		return append(parts, TempPart{Text: "[" + contentSequence + "]", Index: -1, FormatStr: ""})
 	}
 	return append(parts, TempPart{Text: "", Index: index, FormatStr: buildFormatStr(align, width)})
 }
 
-// =============================
-// PARSE - ESCAPE
-// =============================
-// strip it of its angle brackets
-func handleEscape(parts []TempPart, contentSequence string) []TempPart {
-	contentSequence = strings.TrimPrefix(contentSequence, "<")
-	contentSequence = strings.TrimSuffix(contentSequence, ">")
-	return append(parts, TempPart{Text: "[" + contentSequence + "]", Index: -1, FormatStr: ""})
-
-}
 
 // =============================
 // PARSE - HELPERS
 // =============================
-func parseAlignWidth(input string) (rune, int, error) {
+func parseAlignWidth(input string) (rune, int, bool) {
 	//'input' is aleady stripped of its placeholder
 	if len(input) < 2 {
-		return 0, 0, fmt.Errorf("padding spec: too short - expected '<N' or '>N' (got '%s')", input)
+		return 0, 0, false
 	}
 	align := rune(input[0])
 	if align != '<' && align != '>' {
-		return 0, 0, fmt.Errorf("padding spec: expected '<' or '>', got '%c'", align)
+		return 0, 0, false
 	}
 
 	widthStr := input[1:]
 	width, err := strconv.Atoi(widthStr)
 	if err != nil {
-		return 0, 0, fmt.Errorf("padding spec: width must be a number (got '%s')", widthStr)
+		return 0, 0, false
 	}
 
 	if width <= 0 {
-		return 0, 0, fmt.Errorf("padding spec: must be greater than zero (got %d)", width)
+		return 0, 0, false
 	}
 
-	return align, width, nil
+	return align, width, true
 }
 
 func buildFormatStr(align rune, width int) string {

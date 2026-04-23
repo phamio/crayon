@@ -64,8 +64,7 @@
 //
 // # Placeholders and Padding
 //
-// Placeholders [0] through [999] can be used for dynamic content. Padding can be
-// applied inline:
+// Placeholders [0] through [999] can be used for dynamic content. Padding  is applied inline:
 //
 //	// Left align with width 20
 //	template := crayon.Parse("[0:<20]")
@@ -77,15 +76,7 @@
 //	row := crayon.Parse("[fg=cyan][0:<20][fg=yellow][1:>10][reset]")
 //	row.Println("Name", "Score")
 //
-// # Escape Syntax
 //
-// Use [<content>] to print literal bracket content without interpretation:
-//
-//	// This will print "[fg=red]" literally, not as a color tag
-//	crayon.Parse("[<fg=red>]").Println()
-//
-//	// This works for time literals too
-//	crayon.Parse("The time is [<12:30>]").Println()
 //
 // # Color Toggling
 //
@@ -179,7 +170,7 @@
 //
 //   - NO_COLOR: When set, disables all color output
 //   - COLORTERM: Used for truecolor detection (truecolor or 24bit)
-//   - TERM: Used for 256-color detection (contains "256color")
+//   - TERM: Used for 256-color and dumb terminal detection (contains "256color")
 //
 // # Examples
 //

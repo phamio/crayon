@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.1]
+
+### Changed
+- Removed escape system (defaults to fallthrough)
+ 
+
+### Fixed
+- RGBto256 fallback - catches more greys by using spread (max-min) instead of component differences between color channels
+
+
 ## [0.5.0]
 
 ### Added

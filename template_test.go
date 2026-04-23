@@ -126,32 +126,11 @@ func TestHandleCloseBrackets_ColorSequenceDisabled(t *testing.T) {
 	}
 }
 
-func TestHandleCloseBrackets_EscapeSequence(t *testing.T) {
-	parts := []TempPart{}
-	parts, _ = handleCloseBracket("<fg=red>", parts, true)
-
-	if len(parts) != 1 {
-		t.Errorf("Expected 1 part, got %d", len(parts))
-	}
-
-	if parts[0].Text != "[fg=red]" {
-		t.Errorf("Expected '[fg=red]', got '%s'", parts[0].Text)
-	}
-}
-
 
 
 // =============================
 // BENCHMARK TESTS
 // =============================
-
-func BenchmarkHandleCloseBracket_EscapeSequence(b *testing.B) {
-	parts := []TempPart{}
-	//parts, _ = handleCloseBracket("<fg=red>", parts, true)
-	for i := 0; i < b.N; i++ {
-		_, _ = handleCloseBracket("<fg=red>", parts, true)
-	}
-}
 
 func BenchmarkHandleCloseBrackets_ColorSequenceDisabled(b *testing.B) {
 	parts := []TempPart{}

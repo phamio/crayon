@@ -103,7 +103,7 @@ func main() {
 
 
     logTemplate := crayon.Parse("[0] [fg=blue][1][reset]: [fg=yellow][2][reset]")
-    template := crayon.Parse("[fg=red bold]Error: [0][reset]")
+    template := crayon.Parse("[[fg=red bold]Error]: [0][reset]")
     
 
     // Different log levels
@@ -204,26 +204,7 @@ func main(){
 # Output
 
 ![help_flag](images/help_flag_merge.png)
----
 
-
-
-## Escapes
-By default, any text inside [] that matches a color or style tag is processed by Crayon. Escapes let you print literal bracket content without it being interpreted as tag
-Use [`<content>`] to escape:
-
-``` go
-package main
-import (
-    "github.com/phamio/crayon"
-)
-    //Without escapes
-    crayon.Parse("[bg=cyan][fg=red]Hello World[reset]").Println()
-
-    //escapes are enclosed in [<content>] where "content" is the word to be escaped
-    //In this case, "fg=red" is expected to be printed literally as "[fg=red] without it being processed
-    escapes := crayon.Parse("[bg=cyan][<fg=red>]Hello World[reset]").Println()
-```
 ---
 
 ## Color Toggling
@@ -434,7 +415,7 @@ Parse every time: 20.433925041s
 |---------|--------|
 | `[a:bc]` | a=index(placeholder), b=direction, c=width|
 | `[0:<20]` | placeholder=0, direction=left align, width=20 |
-| `[0:>10]` | placeholder=0, direction=right align, placeholder 0, width=10 |
+| `[0:>10]` | placeholder=0, direction=right align, width=10 |
 
 
 
@@ -509,8 +490,5 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - The Go community for testing and feedback
 - All contributors who have helped improve this library
 
----
-
-**Note**: Always test color output in different terminals to ensure compatibility with your users' environments. Consider providing a --no-color flag in your applications for users who prefer plain text — Crayon color toggling makes this straightforward.
 
 

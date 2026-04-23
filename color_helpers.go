@@ -11,33 +11,48 @@ import (
 //===========================================
 //  COLOR DOWNSAMPLING/DEGRADATION
 //===========================================
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
-// RGB to 256 palette fallback
 func rgbTo256Index(r, g, b int) int {
-    r6 := (r * 5 + 127) / 255
-	g6 := (g * 5 + 127) / 255
-	b6 := (b * 5 + 127)/ 255
-	//cubeIndex := 16 + 36*r6 + 6*g6 +b6
+    //Find the maximum and minimum channel values
+	//to compute the range, spread across RGB channels.
+	//A small range means the color is close to neutral/grey.
+	maxC := r 
+	if g > maxC { maxC = g }
+	if b > maxC { maxC = b }
 
+	minC := r 
+	if g < minC { minC = g }
+	if b < minC { minC = b }
+    
 
-  //check if it's close enough to gray
-  if abs(r-g) < 10 && abs(g-b) < 10 {
-  	avg := (r + g + b) / 3
-  	if avg < 8 {
+	//Used to determine how dark the color is
+	avg := (r + g + b ) / 3
+    
+	//====== GRAYSCALE RAMP ROUTING =========
+	//Route to the 24-step grayscale ramp if 
+	// - maxC-minC <= 20: The cube is too coarse for neutral tones
+	//and introduces visible color casts such as pinkish, greenish, etc.
+	//So the threshold was made wide enough (20)
+	// - avg > 5:  it allows dark grays to correctly hit the ramp, whiles true or near blacks passes over (0, 0, 8)
+	if maxC - minC <= 20 && avg > 5 {
+		//Clamp avg to the valid grayscale ramp
+		//Starts at RGB(8,8,8) and ends at RGB(238,238,238).
+
+	if avg < 8 {
   		avg = 8
   	}
   	if avg > 238 {
   		avg = 238
   	}
+	//Tries to map avg to grayscale ramp index 232-255
   	return  232 + (avg-8)/10
+	//return  232 + ((avg-8)*23/247)
   }	
+
+  //====== COLOR CUBE ROUTING ======
+  // for colors where the channel spread exceeds 20.
+    r6 := (r * 5 + 127) / 255
+	g6 := (g * 5 + 127) / 255
+	b6 := (b * 5 + 127)/ 255
     //fmt.Printf("RGB TO INDEX FROM COLOR HELPERS CODE (NOT TEST):  RGB=(%d,%d,%d)  | 256 = %d\n", r, g, b, 16 + 36*r6 + 6*g6 +b6)
 	return 16 + 36*r6 + 6*g6 +b6
 
@@ -233,8 +248,7 @@ func parse256ColorCode(colorCode string, paletteCode int) string {
 }
 
 
-// will be made a private function in v0.7.0
-func ParseColor(color string) string {
+func parseColor(color string) string {
 	//this function is meant to receive string like "bold" "fg=red" and other colors and
 	//convert them to their ansi codes
 	if code, exists := colorMap[color]; exists {
